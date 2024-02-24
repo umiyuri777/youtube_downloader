@@ -1,6 +1,5 @@
 
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 void main() {
@@ -56,7 +55,7 @@ class MyHomePage extends HookConsumerWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const Download_progress()),
+                MaterialPageRoute(builder: (context) => const Downloadprogress()),
               );
             },
             child: const Text('ダウンロード'),
@@ -70,8 +69,8 @@ class MyHomePage extends HookConsumerWidget {
 
 
 
-class Download_progress extends HookConsumerWidget {
-  const Download_progress({super.key});
+class Downloadprogress extends HookConsumerWidget {
+  const Downloadprogress({super.key});
 
   Future<void> wait() async {
     await Future.delayed(const Duration(seconds: 5));
