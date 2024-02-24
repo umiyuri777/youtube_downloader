@@ -1,7 +1,14 @@
+
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      child: MyApp()
+    )
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -10,33 +17,27 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'youtube動画ダウンローダー ',
+      title: 'youtube動画ダウンローダー',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'youtube動画ダウンローダー'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends HookConsumerWidget {
   const MyHomePage({super.key, required this.title});
 
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref){
     return Scaffold(
       appBar: AppBar(
+        title: Text(title),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
       ),
       body: Center(
         child: Column(
@@ -45,20 +46,70 @@ class _MyHomePageState extends State<MyHomePage> {
             const Text(
               '動画のURLを入力してください',
             ),
-            TextField(
-              decoration: const InputDecoration(
+            const TextField(
+              decoration: InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'URL',
               ),
             ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const Download_progress()),
+              );
+            },
+            child: const Text('ダウンロード'),
+          ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), 
     );
   }
 }
+
+
+
+class Download_progress extends HookConsumerWidget {
+  const Download_progress({super.key});
+
+  Future<void> wait() async {
+    await Future.delayed(const Duration(seconds: 5));
+    debugPrint('ダウンロード完了');
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ダウンロード中'),
+      ),
+      body: Center(
+        child:FutureBuilder(
+              future: wait(), 
+              builder: (BuildContext context, AsyncSnapshot snapshot) {
+                if (snapshot.connectionState == ConnectionState.done) {
+                  return  const Text('完了');
+                } else if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                } else {
+                  return const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                    Text(
+                      'ダウンロード中です',
+                    ),
+                    CircularProgressIndicator()
+                    ]
+                  );
+                }
+              },
+            )
+        
+      ),
+    );
+  }
+}
+
+
+
