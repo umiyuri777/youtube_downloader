@@ -1,6 +1,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:flutter_hooks/flutter_hooks.dart';
+
 
 void main() {
   runApp(
@@ -33,6 +37,9 @@ class MyHomePage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref){
+    final TextEditingController _controller = TextEditingController();
+    final formkey = GlobalKey<FormState>();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
@@ -45,18 +52,33 @@ class MyHomePage extends HookConsumerWidget {
             const Text(
               '動画のURLを入力してください',
             ),
-            const TextField(
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'URL',
+            Form(
+              key: formkey,
+              child: TextFormField(
+                onChanged: (value) {
+                  
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'URLを入力してください';
+                  }
+                  return null;
+                },
+                controller: _controller,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'URL',
+                ),
               ),
             ),
           ElevatedButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Downloadprogress()),
-              );
+              if(formkey.currentState!.validate()){
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Downloadprogress(url: _controller.text)),
+                );                
+              }
             },
             child: const Text('ダウンロード'),
           ),
@@ -70,7 +92,9 @@ class MyHomePage extends HookConsumerWidget {
 
 
 class Downloadprogress extends HookConsumerWidget {
-  const Downloadprogress({super.key});
+
+  final String url;
+  const Downloadprogress({super.key, required this.url});
 
   Future<void> wait() async {
     await Future.delayed(const Duration(seconds: 5));
@@ -85,26 +109,25 @@ class Downloadprogress extends HookConsumerWidget {
       ),
       body: Center(
         child:FutureBuilder(
-              future: wait(), 
-              builder: (BuildContext context, AsyncSnapshot snapshot) {
-                if (snapshot.connectionState == ConnectionState.done) {
-                  return  const Text('完了');
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else {
-                  return const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                    Text(
-                      'ダウンロード中です',
-                    ),
-                    CircularProgressIndicator()
-                    ]
-                  );
-                }
-              },
-            )
-        
+          future: wait(), 
+          builder: (BuildContext context, AsyncSnapshot snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              return  const Text('完了');
+            } else if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            } else {
+              return const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                Text(
+                  'ダウンロード中です',
+                ),
+                CircularProgressIndicator()
+                ]
+              );
+            }
+          },
+        )
       ),
     );
   }
