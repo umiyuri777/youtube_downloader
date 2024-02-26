@@ -1,9 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:flutter_hooks/flutter_hooks.dart';
 
 
 void main() {
@@ -101,6 +99,37 @@ class Downloadprogress extends HookConsumerWidget {
     debugPrint('ダウンロード完了');
   }
 
+  Future<void> downloading(String link) async {
+    debugPrint('Aダウンロード中');
+    try {
+      final youtubeDlResult = await Process.run('yt-dip', ['-f', '"bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]"', link]);
+      var fileName = '';
+      if (youtubeDlResult.stderr != null && youtubeDlResult.stderr is String && youtubeDlResult.stderr.isNotEmpty) {
+        debugPrint(youtubeDlResult.stderr);
+        exit(-1);
+      }
+      for (final line in (youtubeDlResult.stdout as String).split('\n')) {
+        if (line.startsWith('[download] Destination: ')) {
+          fileName = line.replaceFirst('[download] Destination: ', '');
+          break;
+        }
+      }
+      if (fileName == '') {
+        debugPrint('Could not locate downloaded file. Perhaps the file already exists?'); return;
+      } else {
+        debugPrint('Finished downloading video: $fileName');
+      }
+      // プロセスの結果を確認
+      debugPrint('Exit code: ${youtubeDlResult.exitCode}');
+      debugPrint('Stdout: ${youtubeDlResult.stdout}');
+      debugPrint('Stderr: ${youtubeDlResult.stderr}');
+    } catch (e) {
+      debugPrint('An error occurred: $e');
+    }
+    debugPrint('Bダウンロード中');
+  }
+
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
@@ -109,7 +138,8 @@ class Downloadprogress extends HookConsumerWidget {
       ),
       body: Center(
         child:FutureBuilder(
-          future: wait(), 
+          // future: wait(), 
+          future: downloading(url),
           builder: (BuildContext context, AsyncSnapshot snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
               return  const Text('完了');
@@ -119,10 +149,10 @@ class Downloadprogress extends HookConsumerWidget {
               return const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                Text(
-                  'ダウンロード中です',
-                ),
-                CircularProgressIndicator()
+                  Text(
+                    'ダウンロード中です',
+                  ),
+                  CircularProgressIndicator()
                 ]
               );
             }
