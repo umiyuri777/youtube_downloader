@@ -1,4 +1,5 @@
 
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -149,14 +150,48 @@ class Downloadprogress extends HookConsumerWidget {
 
     debugPrint('start downloading');
 
-    //APIにリクエストを送信
-    final response = await http.get(apiurl); 
+    // APIにリクエストを送信
+    final response = await http.get(apiurl);
     if(response.statusCode == 200){
       debugPrint('success');
     } else {
       debugPrint('failed');
     }
   }
+
+  Stream<String> getMultipleResponses(String link) async* {
+
+    try {
+      // APIにリクエストを送信
+      var request = http.Request('GET', Uri.parse('http://127.0.0.1:7000/download'));
+
+      debugPrint('リクエストを送信しました');
+
+      // レスポンスを取得
+      http.StreamedResponse response = await request.send();
+
+      debugPrint('レスポンスを取得しました');
+
+      // エラーハンドリング
+      if (response.statusCode == 200) {
+
+        debugPrint('接続成功！');
+
+        await for (var data in response.stream.transform(utf8.decoder)) {
+          debugPrint('data: $data');
+          yield data;
+        }
+        yield 'ダウンロード中です';
+      } else {
+        debugPrint('接続失敗...');
+        yield 'エラー: ステータスコード ${response.statusCode}';
+      }
+    } catch (e) {
+      yield 'Error: $e';
+    }
+
+  }
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -166,7 +201,7 @@ class Downloadprogress extends HookConsumerWidget {
       ),
       body: Center(
         child:StreamBuilder(
-          stream: downloading(videourl),
+          stream: getMultipleResponses(videourl),
           builder: (BuildContext context, AsyncSnapshot snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
               return Text(snapshot.data.toString());
