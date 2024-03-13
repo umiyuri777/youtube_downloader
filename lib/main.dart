@@ -1,6 +1,5 @@
 
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -101,7 +100,60 @@ class Downloadprogress extends HookConsumerWidget {
   final apiurl = Uri.parse('http://127.0.0.1:7000/download');
 
 
-  // Future<void> downloading(String link) async {
+  Future<String> downloading(String link) async {
+
+    debugPrint('ダウンロードを開始します');
+
+    //APIにリクエストを送信
+    final response = await http.get(apiurl);
+
+    debugPrint('サーバから応答が返ってきました');
+
+    if(response.statusCode == 200){
+      debugPrint('success');
+      final data = json.decode(response.body);
+      return data['message'] ?? 'データがありません';
+    } else {
+      debugPrint('failed');
+      return 'エラー: ステータスコード${response.statusCode}';
+    }
+    
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ダウンロード中'),
+      ),
+      body: Center(
+        child:FutureBuilder(
+          future: downloading(videourl),
+          builder: (BuildContext context, AsyncSnapshot snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              if (snapshot.hasError) {
+                return Text('エラーが発生しました: ${snapshot.error}');
+              } else {
+                return Text(snapshot.data ?? '返り値はあるが、データがありません');
+              }
+            } else {
+              return const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    'ダウンロード中です\nこれには時間がかかる場合があります',
+                  ),
+                  CircularProgressIndicator()
+                ]
+              );
+            }
+          },
+        )
+      ),
+    );
+  }
+
+  // Stream<void> downloading(String link) async* {
 
   //   debugPrint('start downloading');
 
@@ -121,8 +173,8 @@ class Downloadprogress extends HookConsumerWidget {
   //       title: const Text('ダウンロード中'),
   //     ),
   //     body: Center(
-  //       child:FutureBuilder(
-  //         future: downloading(videourl),
+  //       child:StreamBuilder(
+  //         stream: downloading(videourl),
   //         builder: (BuildContext context, AsyncSnapshot snapshot) {
   //           if (snapshot.connectionState == ConnectionState.done) {
   //             return Text(snapshot.data.toString());
@@ -144,50 +196,6 @@ class Downloadprogress extends HookConsumerWidget {
   //     ),
   //   );
   // }
-
-  Stream<void> downloading(String link) async* {
-
-    debugPrint('start downloading');
-
-    //APIにリクエストを送信
-    final response = await http.get(apiurl); 
-    if(response.statusCode == 200){
-      debugPrint('success');
-    } else {
-      debugPrint('failed');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ダウンロード中'),
-      ),
-      body: Center(
-        child:StreamBuilder(
-          stream: downloading(videourl),
-          builder: (BuildContext context, AsyncSnapshot snapshot) {
-            if (snapshot.connectionState == ConnectionState.done) {
-              return Text(snapshot.data.toString());
-            } else if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}');
-            } else {
-              return const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Text(
-                    'ダウンロード中です',
-                  ),
-                  CircularProgressIndicator()
-                ]
-              );
-            }
-          },
-        )
-      ),
-    );
-  }
 }
 
 
