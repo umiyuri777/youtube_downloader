@@ -119,8 +119,8 @@ class Downloadprogress extends HookConsumerWidget {
   final String title;
   Downloadprogress({super.key, required this.videourl, required this.title});
 
-  final apiurl = Uri.parse('http://127.0.0.1:7000/download');
-
+  final apiurl = Uri.parse('http://127.0.0.1:7000/download');   //実機用
+  // final apiurl = Uri.parse('http://10.0.2.2:7000/download');    //Android Emulator用
 
   Future<String> downloading(String link) async {
 
@@ -149,8 +149,16 @@ class Downloadprogress extends HookConsumerWidget {
   }
 
   Future<bool> saveFile(String filename) async {
-    final url = Uri.parse("http://127.0.0.1:7000/file_download");
-    final data = await http.get(url);
+    final url = Uri.parse("http://127.0.0.1:7000/file_download");      //実機用
+    // final url = Uri.parse("http://10.0.2.2:7000/file_download");        //Android Emulator用
+    debugPrint('ファイルをダウンロードします');
+    final data = await http.post(url, 
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        "Keep-Alive": "timeout=5, max=1"
+      }, 
+    );
+    debugPrint('ファイルのダウンロードが完了しました');
     try {
       if(data.statusCode == 200){
         final params = SaveFileDialogParams(
@@ -190,20 +198,23 @@ class Downloadprogress extends HookConsumerWidget {
                 if(snapshot.data == 'Download successful'){
                   return ElevatedButton(
                     onPressed: () async {
-                      final result = await saveFile('$title.mp4');
-                      if(result){
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('ファイルの保存に成功しました'),
-                          )
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('ファイルの保存に失敗しました'),
-                          )
-                        );
-                      }
+                      FutureBuilder(future: saveFile('$title.mp4'), 
+                      builder: (BuildContext context, AsyncSnapshot snapshot){
+                        if(snapshot.connectionState == ConnectionState.done){
+                          if(snapshot.hasError){
+                            return const Text('エラーが発生しました');
+                          } else {
+                            return const Text('ファイルの保存に成功しました');
+                          }
+                        } else {
+                          return const Column(
+                            children: [
+                              Text('ファイルの保存中です'),
+                               CircularProgressIndicator(),
+                            ],
+                          );
+                        }
+                      });
                     },
                     child: const Text('この端末にファイルを保存'),
                   );
@@ -229,50 +240,6 @@ class Downloadprogress extends HookConsumerWidget {
       ),
     );
   }
-
-  // Stream<void> downloading(String link) async* {
-
-  //   debugPrint('start downloading');
-
-  //   //APIにリクエストを送信
-  //   final response = await http.get(apiurl); 
-  //   if(response.statusCode == 200){
-  //     debugPrint('success');
-  //   } else {
-  //     debugPrint('failed');
-  //   }
-  // }
-
-  // @override
-  // Widget build(BuildContext context, WidgetRef ref) {
-  //   return Scaffold(
-  //     appBar: AppBar(
-  //       title: const Text('ダウンロード中'),
-  //     ),
-  //     body: Center(
-  //       child:StreamBuilder(
-  //         stream: downloading(videourl),
-  //         builder: (BuildContext context, AsyncSnapshot snapshot) {
-  //           if (snapshot.connectionState == ConnectionState.done) {
-  //             return Text(snapshot.data.toString());
-  //           } else if (snapshot.hasError) {
-  //             return Text('Error: ${snapshot.error}');
-  //           } else {
-  //             return const Column(
-  //               mainAxisAlignment: MainAxisAlignment.center,
-  //               children: <Widget>[
-  //                 Text(
-  //                   'ダウンロード中です',
-  //                 ),
-  //                 CircularProgressIndicator()
-  //               ]
-  //             );
-  //           }
-  //         },
-  //       )
-  //     ),
-  //   );
-  // }
 }
 
 
