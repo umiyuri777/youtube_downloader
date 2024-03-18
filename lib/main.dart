@@ -1,6 +1,8 @@
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:http/http.dart' as http;
 // import 'dart:io';
@@ -38,8 +40,10 @@ class MyHomePage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref){
 
-    final TextEditingController controller = TextEditingController();
-    final formkey = GlobalKey<FormState>();
+    final TextEditingController Title_controller = TextEditingController();
+    final TextEditingController URL_controller = TextEditingController();
+    final title_formkey = GlobalKey<FormState>();
+    final URL_formkey = GlobalKey<FormState>();
 
     return Scaffold(
       appBar: AppBar(
@@ -51,21 +55,38 @@ class MyHomePage extends HookConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
+              'タイトルを入力してください',
+            ),
+            Form(
+              key: title_formkey,
+              child: TextFormField(
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'タイトルを入力してください';
+                  }
+                  return null;
+                },
+                controller: Title_controller,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'タイトル',
+                ),
+              ),
+            ),
+
+            const Text(
               '動画のURLを入力してください',
             ),
             Form(
-              key: formkey,
+              key: URL_formkey,
               child: TextFormField(
-                onChanged: (value) {
-                  
-                },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'URLを入力してください';
                   }
                   return null;
                 },
-                controller: controller,
+                controller: URL_controller,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   labelText: 'URL',
@@ -74,10 +95,10 @@ class MyHomePage extends HookConsumerWidget {
             ),
           ElevatedButton(
             onPressed: () {
-              if(formkey.currentState!.validate()){
+              if(URL_formkey.currentState!.validate() || title_formkey.currentState!.validate()){
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Downloadprogress(videourl: controller.text)),
+                  MaterialPageRoute(builder: (context) => Downloadprogress(title: Title_controller.text, videourl : URL_controller.text)),
                 );                
               }
             },
@@ -95,7 +116,8 @@ class MyHomePage extends HookConsumerWidget {
 class Downloadprogress extends HookConsumerWidget {
 
   final String videourl;
-  Downloadprogress({super.key, required this.videourl});
+  final String title;
+  Downloadprogress({super.key, required this.videourl, required this.title});
 
   final apiurl = Uri.parse('http://127.0.0.1:7000/download');
 
@@ -117,7 +139,31 @@ class Downloadprogress extends HookConsumerWidget {
       debugPrint('failed');
       return 'エラー: ステータスコード${response.statusCode}';
     }
-    
+  }
+
+  Future<bool> saveFile(String filename) async {
+    final url = Uri.parse("http://127.0.0.1:7000/file_download");
+    final data = await http.get(url);
+    try {
+      if(data.statusCode == 200){
+        final params = SaveFileDialogParams(
+          data: data.bodyBytes,
+          fileName: filename,
+        );
+        final savedfilePath = await FlutterFileDialog.saveFile(params: params);
+        if(savedfilePath == null){
+          throw Exception('ファイルの保存に失敗しました');
+        }
+      }else{
+        throw Exception('ファイルのダウンロードに失敗しました');
+      }
+    } catch (e) {
+      if(kDebugMode){
+        debugPrint('エラーが発生しました: $e');
+      }
+      return false;
+    }
+    return true;
   }
 
   @override
@@ -134,14 +180,38 @@ class Downloadprogress extends HookConsumerWidget {
               if (snapshot.hasError) {
                 return Text('エラーが発生しました: ${snapshot.error}');
               } else {
-                return Text(snapshot.data ?? '返り値はあるが、データがありません');
+                if(snapshot.data == 'Download successful'){
+                  return ElevatedButton(
+                    onPressed: () async {
+                      final result = await saveFile('$title.mp4');
+                      if(result){
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('ファイルの保存に成功しました'),
+                          )
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('ファイルの保存に失敗しました'),
+                          )
+                        );
+                      }
+                    },
+                    child: const Text('この端末にファイルを保存'),
+                  );
+                } else {
+                  return const Text('エラーが発生しました');
+
+                }
+
               }
             } else {
               return const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   Text(
-                    'ダウンロード中です\nこれには時間がかかる場合があります',
+                    'サーバーに動画をダウンロード中です\nこれには時間がかかる場合があります',
                   ),
                   CircularProgressIndicator()
                 ]
