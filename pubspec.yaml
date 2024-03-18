@@ -33,6 +33,8 @@ dependencies:
   flutter_riverpod:
   path_provider:
   http:
+  flutter_file_dialog:
+  flutter_downloader:
 
 
   # The following adds the Cupertino Icons font to your application.
