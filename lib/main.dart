@@ -127,7 +127,14 @@ class Downloadprogress extends HookConsumerWidget {
     debugPrint('ダウンロードを開始します');
 
     //APIにリクエストを送信
-    final response = await http.get(apiurl);
+    final response = await http.post(apiurl, 
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      }, 
+      body: jsonEncode(<String, String>{
+        'url': link,
+      })
+    );
 
     debugPrint('サーバから応答が返ってきました');
 
