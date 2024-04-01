@@ -127,10 +127,10 @@ packages:
     dependency: "direct main"
     description:
       name: http
-      sha256: a2bbf9d017fcced29139daa8ed2bba4ece450ab222871df93ca9eec6f80c34ba
+      sha256: "5895291c13fa8a3bd82e76d5627f69e0d85ca6a30dcac95c4ea19a5d555879c2"
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.0"
+    version: "0.13.6"
   http_parser:
     dependency: transitive
     description:
@@ -349,6 +349,22 @@ packages:
     description:
       name: xdg_directories
       sha256: faea9dee56b520b55a566385b84f2e8de55e7496104adada9962e0bd11bcff1d
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.4"
+  youtube:
+    dependency: "direct main"
+    description:
+      name: youtube
+      sha256: "3d82e77fe8918a891c3aaba68adc14d5f4bbc6c2e368cfa100a9d620f238f9b0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
+  youtube_api:
+    dependency: "direct main"
+    description:
+      name: youtube_api
+      sha256: "9b355d327a0a3a06fe91b9f21b2075214fc44225a1824d106191a248894c7999"
       url: "https://pub.dev"
     source: hosted
     version: "1.0.4"
