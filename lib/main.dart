@@ -7,6 +7,7 @@ import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:http/http.dart' as http;
 // import 'package:youtube/youtube_thumbnail.dart';
+import 'package:gap/gap.dart';
 
 // import 'dart:io';
 
@@ -102,7 +103,7 @@ class MyHomePage extends HookConsumerWidget {
               if(URL_formkey.currentState!.validate() || title_formkey.currentState!.validate()){
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Downloadprogress(title: Title_controller.text, videourl : URL_controller.text)),
+                  MaterialPageRoute(builder: (context) => Downloadprogress(filename: Title_controller.text, videourl : URL_controller.text)),
                 );                
               }
             },
@@ -120,13 +121,14 @@ class MyHomePage extends HookConsumerWidget {
 class Downloadprogress extends HookConsumerWidget {
 
   final String videourl;
-  final String title;
-  Downloadprogress({super.key, required this.videourl, required this.title});
+  final String filename;
+  Downloadprogress({super.key, required this.videourl, required this.filename});
 
   final apiurl = Uri.parse('http://127.0.0.1:7000/download');   //実機用
-  // final apiurl = Uri.parse('http://10.0.2.2:7000/download');    //Android Emulator用
+  // final apiurl = Uri.parse('http://10.0.2.2:8000/download');    //Android Emulator用
 
   late String videoid = get_videoID(videourl);
+  late String title;
 
   //URLから動画IDを抽出する関数
   String get_videoID(String url){
@@ -149,56 +151,81 @@ class Downloadprogress extends HookConsumerWidget {
     }
   }
 
+  //動画のタイトルを取得する関数
   Future<String> get_title() async {
     final response = await http.get(Uri.parse(videourl));
     final title = RegExp(r'<title>(.*?)</title>').firstMatch(response.body)?.group(1);
+
+    debugPrint("get_titleで取得できた動画タイトル: $title");
+
     return title ?? 'タイトルが取得できませんでした';
   }
 
-  Future<String> downloading(String link) async {
+  //動画をダウンロードをサーバにリクエストする関数
+  Future<String> downloading(String link, BuildContext context) async {
 
     debugPrint('ダウンロードを開始します');
 
     //APIにリクエストを送信
-    final response = await http.post(apiurl, 
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      }, 
-      body: jsonEncode(<String, String>{
-        'url': link,
-      })
-    );
+    try {
+      final response = await http.post(apiurl, 
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          "Keep-Alive": "timeout=5, max=1"
+        }, 
+        body: jsonEncode(<String, String>{
+          'url': link,
+        })
+      ).timeout(const Duration(seconds: 10));
+  
+      debugPrint('サーバから応答が返ってきました');
 
-    debugPrint('サーバから応答が返ってきました');
-
-    if(response.statusCode == 200){
-      debugPrint('success');
-      final data = json.decode(response.body);
-      return data['message'] ?? 'データがありません';
-    } else {
-      debugPrint('failed');
-      return 'エラー: ステータスコード${response.statusCode}';
+      if(response.statusCode == 200){
+        debugPrint('success');
+        final data = json.decode(response.body);
+        return data['message'] ?? 'データがありません';
+      } else {
+        debugPrint('failed');
+        return 'エラー: ステータスコード${response.statusCode}';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('サーバーからの応答がありませんでした。もう一度試してみてください'),
+        ),
+      );
+      Navigator.of(context).pop();
+      return 'エラー: タイムアウト';
     }
   }
 
-  Future<bool> saveFile(String filename) async {
+  //ファイルを保存する関数
+  Future<bool> saveFile(String filename, String title) async {
     final url = Uri.parse("http://127.0.0.1:7000/file_download");      //実機用
-    // final url = Uri.parse("http://10.0.2.2:7000/file_download");        //Android Emulator用
+    // final url = Uri.parse("http://10.0.2.2:8000/file_download");        //Android Emulator用
     debugPrint('ファイルをダウンロードします');
+
+    title = title.substring(0, title.length - 10);
+
     final data = await http.post(url, 
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
         "Keep-Alive": "timeout=5, max=1"
       }, 
+      body: jsonEncode(<String, String>{
+        'filename': title,
+      })
     );
+
     debugPrint('ファイルのダウンロードが完了しました');
     debugPrint('debug: ${data.statusCode}');
     try {
       if(data.statusCode == 200){
         final params = SaveFileDialogParams(
           data: data.bodyBytes,
-          fileName: filename,
+          fileName: '$filename.mp4',
         );
+        debugPrint('ファイルを保存します');
         final savedfilePath = await FlutterFileDialog.saveFile(params: params);
         if(savedfilePath == null){
           throw Exception('ファイルの保存に失敗しました');
@@ -224,11 +251,13 @@ class Downloadprogress extends HookConsumerWidget {
       body:Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          
+
           Image.network(Uri.parse('https://img.youtube.com/vi/$videoid/0.jpg').toString()),
 
+          const Gap(10),
+
           FutureBuilder(
-            future: get_title(), 
+            future: get_title(),
             builder: (BuildContext context, AsyncSnapshot snapshot) {
               if (snapshot.connectionState == ConnectionState.done) {
                 if (snapshot.hasError) {
@@ -249,8 +278,10 @@ class Downloadprogress extends HookConsumerWidget {
             }
           ),
 
+          const Gap(10),
+
           FutureBuilder(
-            future: downloading(videourl),
+            future: downloading(videourl, context),
             builder: (BuildContext context, AsyncSnapshot snapshot) {
               if (snapshot.connectionState == ConnectionState.done) {
                 if (snapshot.hasError) {
@@ -259,7 +290,7 @@ class Downloadprogress extends HookConsumerWidget {
                   if(snapshot.data == 'Download successful'){
                     return ElevatedButton(
                           onPressed: () async {
-                            final result = await saveFile(title);
+                            final result = await saveFile(filename, title);
                             if(result == true){
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
