@@ -99,7 +99,6 @@ class MyHomePage extends HookConsumerWidget {
             ),
           ElevatedButton(
             onPressed: () {
-              // url_parser(URL_controller.text);
               if(URL_formkey.currentState!.validate() || title_formkey.currentState!.validate()){
                 Navigator.push(
                   context,
@@ -154,11 +153,13 @@ class Downloadprogress extends HookConsumerWidget {
   //動画のタイトルを取得する関数
   Future<String> get_title() async {
     final response = await http.get(Uri.parse(videourl));
-    final title = RegExp(r'<title>(.*?)</title>').firstMatch(response.body)?.group(1);
+    title = RegExp(r'<title>(.*?)</title>').firstMatch(response.body)?.group(1) ?? 'タイトルが取得できませんでした';
+
+    title = title.substring(0, title.length - 10);
 
     debugPrint("get_titleで取得できた動画タイトル: $title");
 
-    return title ?? 'タイトルが取得できませんでした';
+    return title;
   }
 
   //動画をダウンロードをサーバにリクエストする関数
@@ -171,12 +172,12 @@ class Downloadprogress extends HookConsumerWidget {
       final response = await http.post(apiurl, 
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
-          "Keep-Alive": "timeout=5, max=1"
+          "Keep-Alive": "timeout=60, max=1"
         }, 
         body: jsonEncode(<String, String>{
           'url': link,
         })
-      ).timeout(const Duration(seconds: 10));
+      );
   
       debugPrint('サーバから応答が返ってきました');
 
@@ -189,6 +190,7 @@ class Downloadprogress extends HookConsumerWidget {
         return 'エラー: ステータスコード${response.statusCode}';
       }
     } catch (e) {
+      debugPrint('エラーが発生しました: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('サーバーからの応答がありませんでした。もう一度試してみてください'),
@@ -200,22 +202,24 @@ class Downloadprogress extends HookConsumerWidget {
   }
 
   //ファイルを保存する関数
-  Future<bool> saveFile(String filename, String title) async {
+  Future<bool> saveFile(String filename) async {
     final url = Uri.parse("http://127.0.0.1:7000/file_download");      //実機用
     // final url = Uri.parse("http://10.0.2.2:8000/file_download");        //Android Emulator用
     debugPrint('ファイルをダウンロードします');
-
-    title = title.substring(0, title.length - 10);
+    debugPrint('ファイル名: $filename');
+    
+    if(filename == ''){
+      filename = title;
+    }
 
     final data = await http.post(url, 
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
-        "Keep-Alive": "timeout=5, max=1"
       }, 
       body: jsonEncode(<String, String>{
-        'filename': title,
+        'videoTitle': title,
       })
-    );
+    ).timeout(const Duration(minutes: 10));
 
     debugPrint('ファイルのダウンロードが完了しました');
     debugPrint('debug: ${data.statusCode}');
@@ -240,6 +244,19 @@ class Downloadprogress extends HookConsumerWidget {
       return false;
     }
     return true;
+  }
+
+  //ダウンロード中のダイアログを表示する関数
+  void downloadindwaitdialog(BuildContext context){
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          title: Text('ファイルを保存中です'),
+          content: CircularProgressIndicator(),
+        );
+      }
+    );
   }
 
   @override
@@ -290,7 +307,8 @@ class Downloadprogress extends HookConsumerWidget {
                   if(snapshot.data == 'Download successful'){
                     return ElevatedButton(
                           onPressed: () async {
-                            final result = await saveFile(filename, title);
+                            downloadindwaitdialog(context);
+                            final result = await saveFile(filename);
                             if(result == true){
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -309,7 +327,6 @@ class Downloadprogress extends HookConsumerWidget {
                     );
                   } else {
                     return const Text('エラーが発生しました');
-
                   }
 
                 }
