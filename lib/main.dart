@@ -64,12 +64,12 @@ class MyHomePage extends HookConsumerWidget {
             Form(
               key: title_formkey,
               child: TextFormField(
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'タイトルを入力してください';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'タイトルを入力してください';
+                //   }
+                //   return null;
+                // },
                 controller: Title_controller,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
@@ -87,6 +87,8 @@ class MyHomePage extends HookConsumerWidget {
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'URLを入力してください';
+                  } else if (value.contains('https://') == false){
+                    return 'URLを入力してください';
                   }
                   return null;
                 },
@@ -99,7 +101,7 @@ class MyHomePage extends HookConsumerWidget {
             ),
           ElevatedButton(
             onPressed: () {
-              if(URL_formkey.currentState!.validate() || title_formkey.currentState!.validate()){
+              if(URL_formkey.currentState!.validate()){
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => Downloadprogress(filename: Title_controller.text, videourl : URL_controller.text)),
