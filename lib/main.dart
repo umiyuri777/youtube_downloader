@@ -97,6 +97,9 @@ class MyHomePage extends HookConsumerWidget {
                   MaterialPageRoute(builder: (context) => Downloadprogress(filename: Title_controller.text, videourl : URL_controller.text)),
                 );                
               }
+              // if(ref.watch(provider).state == true){
+              //   ref.read(provider).state = false;
+              // }
             },
             child: const Text('ダウンロード'),
           ),
@@ -120,6 +123,10 @@ class Downloadprogress extends HookConsumerWidget {
 
   late String videoid = get_videoID(videourl);
   late String title;
+
+  bool resultflag = false;
+
+  final resultFlagProvider = StateProvider<bool>((ref) => false);
 
   //URLから動画IDを抽出する関数
   String get_videoID(String url){
@@ -145,8 +152,10 @@ class Downloadprogress extends HookConsumerWidget {
   //動画のタイトルを取得する関数
   Future<String> get_title() async {
     final response = await http.get(Uri.parse(videourl));
+    //タイトル要素を抽出
     title = RegExp(r'<title>(.*?)</title>').firstMatch(response.body)?.group(1) ?? 'タイトルが取得できませんでした';
 
+    //タイトルから不要な文字列を削除
     title = title.substring(0, title.length - 10);
 
     debugPrint("get_titleで取得できた動画タイトル: $title");
@@ -193,16 +202,17 @@ class Downloadprogress extends HookConsumerWidget {
     }
   }
 
-  //ファイルを保存する関数
+  //端末にファイルを保存する関数
   Future<bool> saveFile(String filename) async {
     final url = Uri.parse("http://127.0.0.1:7000/file_download");      //実機用
     // final url = Uri.parse("http://10.0.2.2:8000/file_download");        //Android Emulator用
     debugPrint('ファイルをダウンロードします');
-    debugPrint('ファイル名: $filename');
     
     if(filename == ''){
       filename = title;
     }
+
+    debugPrint('ファイル名: $filename');
 
     final data = await http.post(url, 
       headers: <String, String>{
@@ -213,7 +223,7 @@ class Downloadprogress extends HookConsumerWidget {
       })
     ).timeout(const Duration(minutes: 10));
 
-    debugPrint('ファイルのダウンロードが完了しました');
+    debugPrint('サーバでのファイルダウンロードが完了しました');
     debugPrint('debug: ${data.statusCode}');
     try {
       if(data.statusCode == 200){
@@ -227,7 +237,7 @@ class Downloadprogress extends HookConsumerWidget {
           throw Exception('ファイルの保存に失敗しました');
         }
       }else{
-        throw Exception('ファイルのダウンロードに失敗しました');
+        throw Exception('端末へのファイルのダウンロードに失敗しました');
       }
     } catch (e) {
       if(kDebugMode){
@@ -245,10 +255,21 @@ class Downloadprogress extends HookConsumerWidget {
       builder: (BuildContext context) {
         return const AlertDialog(
           title: Text('ファイルを保存中です'),
-          content: CircularProgressIndicator(),
+          content: SizedBox(
+            width: 50,
+            height: 50, 
+            child: CircularProgressIndicator(),
+          ),
         );
       }
     );
+  }
+
+  Future<void> saveAndGoHome(BuildContext context, WidgetRef ref, bool resultflag) async {
+    // saveFileの実行が終わるまで待つ
+    // ダイアログを閉じる
+    ref.read(resultFlagProvider.notifier).state = true;
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
@@ -300,20 +321,16 @@ class Downloadprogress extends HookConsumerWidget {
                     return ElevatedButton(
                           onPressed: () async {
                             downloadindwaitdialog(context);
+                      
                             final result = await saveFile(filename);
-                            if(result == true){
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('ファイルの保存に成功しました'),
-                                ),
-                              );
+
+                            if(result == false){
+                              resultflag = false;
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('ファイルの保存に失敗しました'),
-                                ),
-                              );
+                              resultflag = true;
                             }
+
+                            saveAndGoHome(context, ref, resultflag);
                           }, 
                           child: const Text("ファイルを保存")
                     );
@@ -329,7 +346,11 @@ class Downloadprogress extends HookConsumerWidget {
                     Text(
                       'サーバーに動画をダウンロード中です\nこれには時間がかかる場合があります',
                     ),
-                    CircularProgressIndicator()
+                    SizedBox(
+                      width: 50,
+                      height: 50, 
+                      child: CircularProgressIndicator(),
+                    ),
                   ]
                 );
               }
